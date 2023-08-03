@@ -62,15 +62,24 @@ function createEmbed(device: any, searchQuery: string, results: number, index: n
 
 // End listener function to disable buttons after message collector times out
 function addEndListener(collector, previous, next, row, sentMessage) {
-	let endListenerAdded = false
+	let endListenerAdded = false;
+	
 		// Function to be called when the collector ends to disable buttons and update message.
 		const endListener = async () => {
 		previous.setDisabled(true);
 		next.setDisabled(true);
-		await sentMessage.edit({ components: [row] }).catch(logger.error);
+		await sentMessage.edit({ components: [row] }).catch(console.error);
+		
+	// Update footer text on timeout
+        const newEmbed = new EmbedBuilder(sentMessage.embeds[0])
+            .setFooter({ text: "Interaction timeout: Buttons disabled." });
+        await sentMessage.edit({ embeds: [newEmbed] });
+		
 		collector.stop();
 	};
-		if (!endListenerAdded) {
+	
+	// Add the end listener only if it hasn't already been added.
+	if (!endListenerAdded) {
 		collector.on('end', endListener);
 		endListenerAdded = true;
 	}
