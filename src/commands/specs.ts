@@ -1,11 +1,12 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, Interaction, Message, MessageActionRow, MessageButton, MessageEmbed, sentMessage } from 'discord.js';
 import { search as fakeapi } from 'gsmarena-api';
+import logger from '../logging';
 
 // Variables you might want to change:
 // Allowed roles:
 export const roles = ["@everyone"];
 // How long before previous messages can no longer be interacted with. default is 200000 (200 seconds)
-const mtime = 200000
+const mtime = 200000 // default 200000 (200 seconds)
 
 
 // Button config:
@@ -44,7 +45,7 @@ function createEmbed(device: any, searchQuery: string, results: number, index: n
     const imageUrl = device?.img;
     const embed = new EmbedBuilder()
         .setColor('#0099ff')
-        .setTitle(`Search results for: ${searchQuery}`)
+        .setTitle(devices.length > 1 ? `Search results for: ${searchQuery}` : `Result for: ${searchQuery}`)
         .setDescription('Source: https://www.gsmarena.com')
         .addFields(
             { name: 'Device:', value: name },
@@ -54,28 +55,22 @@ function createEmbed(device: any, searchQuery: string, results: number, index: n
             { name: 'Misc:', value: misc },
         )
         .setThumbnail(imageUrl)
-        .setFooter({ text: results+' total results... '+(index + 1)+'/'+devices.length });
+        .setFooter({ text: devices.length > 1 ? results+' total results... '+(index + 1)+'/'+devices.length : "This is the only result for your query (:" });
 
     return embed;
 }
 
-// End listener function to disable buttons and prevent multiple end listeners
-// from being applied to a single message collector.
+// End listener function to disable buttons after message collector times out
 function addEndListener(collector, previous, next, row, sentMessage) {
-	let endListenerAdded = false;
-	
+	let endListenerAdded = false
 		// Function to be called when the collector ends to disable buttons and update message.
 		const endListener = async () => {
 		previous.setDisabled(true);
 		next.setDisabled(true);
-		await sentMessage.edit({ components: [row] }).catch(console.error);
+		await sentMessage.edit({ components: [row] }).catch(logger.error);
 		collector.stop();
 	};
-	
-	// Add the end listener only if it hasn't already been added.
-	// I don't think this is needed since I reworked the endlistener, 
-	// but i'll keep it just in case, better to have an extra 5 lines of code than a memory leak.
-	if (!endListenerAdded) {
+		if (!endListenerAdded) {
 		collector.on('end', endListener);
 		endListenerAdded = true;
 	}
@@ -103,7 +98,13 @@ export async function command(message: Message) {
 
         // Create the initial embed with the first device information and reset button state.
         const embed = createEmbed(devices[index], searchQuery, devices.length, index, devices);
-        const sentMessage = await message.channel.send({ embeds: [embed], components: [row] });
+		// Only send buttons if there are multiple results
+        let sentMessage;
+        if (devices.length > 1) {
+            sentMessage = await message.channel.send({ embeds: [embed], components: [row] });
+        } else {
+            sentMessage = await message.channel.send({ embeds: [embed] });
+        }
 
         // Create the interaction collector -- handles button presses.
         const filter = (interaction: Interaction) => interaction.isButton() && (interaction.customId === 'next' || interaction.customId === 'previous');
@@ -134,7 +135,7 @@ export async function command(message: Message) {
 				
 
             } catch (error) {
-                console.error('Collect Error:', error);
+                logger.error('Collect Error:', error);
                 await interaction.followUp('An error occurred while processing the button click.')
             } finally {
                 previous.setDisabled();
@@ -142,7 +143,7 @@ export async function command(message: Message) {
             }
         });
     } catch (error) {
-        console.error('Command Error:', error);
+        logger.error('Command Error:', error);
         message.channel.send('An error occurred while processing your request. It would appear whatever you just did broke the bot... Congratulations!');
     }
 }
