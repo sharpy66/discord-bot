@@ -61,21 +61,22 @@ function createEmbed(device: any, searchQuery: string, results: number, index: n
 }
 
 // End listener function to disable buttons after message collector times out
-function addEndListener(collector, previous, next, row, sentMessage) {
+function addEndListener(collector, previous, next, row, sentMessage, devices) {
 	let endListenerAdded = false;
 	
-		// Function to be called when the collector ends to disable buttons and update message.
-		const endListener = async () => {
-		previous.setDisabled(true);
-		next.setDisabled(true);
-		await sentMessage.edit({ components: [row] }).catch(console.error);
+	// Function to be called when the collector ends to disable buttons and update message.
+	const endListener = async () => {
+	previous.setDisabled(true);
+	next.setDisabled(true);
 		
-	// Update footer text on timeout
+	// Update footer text on timeout only if there were multiple results.
+	if (devices.length > 1) {
         const newEmbed = new EmbedBuilder(sentMessage.embeds[0])
             .setFooter({ text: "Interaction timeout: Buttons disabled." });
+	await sentMessage.edit({ components: [row] }).catch(console.error);
         await sentMessage.edit({ embeds: [newEmbed] });
-		
-		collector.stop();
+		}
+	collector.stop();
 	};
 	
 	// Add the end listener only if it hasn't already been added.
@@ -118,7 +119,7 @@ export async function command(message: Message) {
         // Create the interaction collector -- handles button presses.
         const filter = (interaction: Interaction) => interaction.isButton() && (interaction.customId === 'next' || interaction.customId === 'previous');
         const collector = sentMessage.createMessageComponentCollector({ filter, time: mtime });
-		addEndListener(collector, previous, next, row, sentMessage);
+	addEndListener(collector, previous, next, row, sentMessage, devices);
 
 		
         // Logic to update the message and components when cycling through pages.
@@ -140,7 +141,7 @@ export async function command(message: Message) {
 
                 // Update the message with the new embed and components.
                 await interaction.deferUpdate();
-				await interaction.editReply({ embeds: [newEmbed], components: [row] });
+		await interaction.editReply({ embeds: [newEmbed], components: [row] });
 				
 
             } catch (error) {
