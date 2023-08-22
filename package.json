@@ -13,6 +13,7 @@
   "dependencies": {
     "checkenv": "^1.2.2",
     "discord.js": "^14.11.0",
+    "gsmarena-api": "github:nordmarin/gsmarena-api#master",
     "ip": "^1.1.8",
     "logdna": "^3.5.3",
     "logdna-winston": "^4.0.1",
