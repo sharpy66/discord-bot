@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import * as discord from 'discord.js';
 import * as stringSimilarity from 'string-similarity';
 
