@@ -186,7 +186,7 @@ client.on('messageCreate', async (message) => {
 
     // Check by the name of the command.
     const cachedModule = cachedModules[`${cmd.toLowerCase()}`];
-    let quoteResponse = null;
+    let quoteResponse: { reply: string; } | null = null;
     // Check by the quotes in the configuration.
     if (!cachedModule) quoteResponse = state.responses.quotes[cmd];
     if (!cachedModule && !quoteResponse) return; // Not a valid command.
@@ -203,15 +203,22 @@ client.on('messageCreate', async (message) => {
     }
 
     logger.info(`${message.author.username} ${message.author} [Channel: ${message.channel}] executed command: ${message.content}`);
-    await message.delete();
-
-    try {
-      if (cachedModule) {
-        await cachedModule.command(message);
-      } else if (cachedModules.quote) {
-        await cachedModules.quote.command(message, quoteResponse?.reply);
-      }
-    } catch (err) { logger.error(err); }
+    const executeModule = async () => {
+      try {
+        if (cachedModule) {
+          await cachedModule.command(message);
+        } else if (cachedModules.quote && quoteResponse) {
+          await cachedModules.quote.command(message, quoteResponse.reply);
+        }
+      } catch (err) { logger.error(err); }
+    };
+    await Promise.all(
+      [
+        state.logChannel?.send(`${message.author.username} ${message.author.id} [Channel: ${message.channel}] executed command: \`${message.content}\``),
+        message.delete(),
+        executeModule()
+      ]
+    );
   } else if (!message.author.bot) {
     // This is a normal channel message.
     await Promise.all(
