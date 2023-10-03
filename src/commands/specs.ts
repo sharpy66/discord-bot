@@ -20,7 +20,6 @@ import {
 import logger from '../logging';
 
 
-
 // Variables you might want to change:
 
 // Allowed roles:
@@ -125,7 +124,7 @@ async function createDetailedEmbed(selectedDevice: any, searchQuery: string, res
 
     let formattedChipset = [snapdragon, exynos, dimensity].filter(word => word !== undefined).join(' / ');
 
-    if (formattedChipset === '') { // prevent errors when formattedChipset is null
+    if (formattedChipset === '') { // prevent errors when formattedChipset is null | fall back to basic info
 
         formattedChipset = device.quickSpec.find(spec => spec.name === 'Chipset')?.value || 'Unknown';
 
@@ -292,7 +291,10 @@ function createEmbed(device: any, searchQuery: string, results: number, index: n
         .setThumbnail(imageUrl)
 
         .setFooter({
-            text: searchResults.length > 1 ? results + ' total results... ' + (index + 1) + '/' + searchResults.length : "This is the only result for your query (:"
+			text: searchResults.length > 1
+			  ? `${results} total results... ${index + 1}/${searchResults.length}`
+			  
+			  : "This is the only result for your query (:"
         });
 
 
@@ -367,7 +369,18 @@ function addEndListener(collector, previous, next, row, sentMessage, searchResul
 // This runs every time the bot responds to a command.
 
 export async function command(message: Message) {
-
+	
+	// Check if the message contains the @ sign | Prevent the command from being used to ping people
+	if (message.content.includes('@')) {
+	
+        message.content = message.content.replace(/@/g, '@\u200B'); // add an invis character between @ and username to prevent the bot from pinging them
+		
+		await message.channel.send(`**Please don't attempt to ping people with this command.**\n\n**${message.author.username}** ran: "**${message.content}**" Try again without an @ in your query`);
+ 
+        return;
+    }
+	
+	
     try {
 
         // Reset index and button state.
@@ -396,7 +409,7 @@ export async function command(message: Message) {
 
         if (searchResults.length === 0) {
 
-            message.channel.send('No device(s) found for "' + searchQuery + '"');
+			message.channel.send(`No device(s) found for "${searchQuery}"`);
 
             return;
 
