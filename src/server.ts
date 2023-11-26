@@ -212,9 +212,16 @@ client.on('messageCreate', async (message) => {
         }
       } catch (err) { logger.error(err); }
     };
+    const commandUsageEmbed = new discord.EmbedBuilder()
+      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+      .setDescription(`Command used in ${message.channel.toString()} [Jump To Message](${message.url})`)
+      .addFields({ name: 'Command', value: `\`\`\`\n${message.content}\n\`\`\``, inline: false })
+      .setTimestamp()
+      .setColor('Blue');
+    const userInfo = `\`${message.author?.toString()}\` (${message.author?.username})`;
     await Promise.all(
       [
-        state.logChannel?.send(`${message.author.username} ${message.author.id} [Channel: ${message.channel}] executed command: \`${message.content}\``),
+        state.msglogChannel?.send({ content: userInfo, embeds: [commandUsageEmbed] }),
         message.delete(),
         executeModule()
       ]
